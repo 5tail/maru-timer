@@ -5,6 +5,10 @@ const STORE_KEY = 'maruTimer_solves';
 const EVENT_KEY = 'maruTimer_event';
 const MAX_STORED = 100; // 每項目保存筆數(顯示仍取最近 5 筆)
 
+// 顯示層每行步數(等寬網格)：只列需要換行的項目，未列出者單行顯示。
+// 333/222/pyram/skewb/ivy 步數短，維持單行；clock/sq1 另有專屬排版。
+const SCRAMBLE_GRID = { '444': 8, '555': 10, '666': 10, '777': 10, 'mega': 11, 'fto': 10 };
+
 class CubeTimer {
     constructor() {
         this.timerState = 'idle'; // idle, preparing, ready, timing, finished
@@ -246,18 +250,73 @@ class CubeTimer {
         try {
             const scramble = await window.ScrambleEngine.generate(this.selectedEvent);
             if (reqId !== this._scrambleReqId) return; // 舊請求，丟棄
-            this.currentScramble = scramble;
-            this.elements.scrambleText.textContent = scramble;
+            this.currentScramble = scramble; // 儲存用原始字串(單行)
+            this.elements.scrambleText.textContent = this.formatScramble(this.selectedEvent, scramble);
             this.elements.scrambleText.setAttribute('data-source', window.ScrambleEngine.lastSource || 'local');
         } catch (error) {
             if (reqId !== this._scrambleReqId) return;
             console.error('打亂生成失敗，使用本地生成器', error);
             this.currentScramble = ScrambleGenerator.generate(this.selectedEvent);
-            this.elements.scrambleText.textContent = this.currentScramble;
+            this.elements.scrambleText.textContent = this.formatScramble(this.selectedEvent, this.currentScramble);
             this.elements.scrambleText.setAttribute('data-source', 'local');
         } finally {
             if (reqId === this._scrambleReqId) this.elements.newScrambleBtn.disabled = false;
         }
+    }
+
+    // ------------------------------------------------------------------
+    // 顯示層排版：等寬欄位對齊 + 依項目換行（來源無關，cubing.js／本地皆套用）
+    // 不改動 currentScramble(儲存原始字串)，僅影響打亂區塊的顯示。
+    // ------------------------------------------------------------------
+    formatScramble(eventId, raw) {
+        if (!raw) return raw;
+        if (eventId === 'clock') return this._formatClock(raw);
+        if (eventId === 'sq1')   return this._formatSquare1(raw);
+        const tokens = raw.trim().split(/\s+/); // 攤平既有換行，統一重排
+        const perLine = SCRAMBLE_GRID[eventId];
+        if (perLine) return this._gridScramble(tokens, perLine);
+        return tokens.join('  '); // 短項目：單行、雙空格較好讀
+    }
+
+    // 等寬對齊網格：每個 move 補到等寬，每行固定步數，上下成欄
+    _gridScramble(tokens, perLine) {
+        const w = Math.max(...tokens.map(t => t.length));
+        const lines = [];
+        for (let i = 0; i < tokens.length; i += perLine) {
+            lines.push(
+                tokens.slice(i, i + perLine).map(t => t.padEnd(w)).join(' ').replace(/\s+$/, '')
+            );
+        }
+        return lines.join('\n');
+    }
+
+    // Clock：在 y2 斷成前後兩行（前 9 針／後 5 針），欄位對齊
+    _formatClock(raw) {
+        const tk = raw.trim().split(/\s+/);
+        const i = tk.indexOf('y2');
+        if (i === -1) return tk.join('  ');
+        const front = tk.slice(0, i);
+        const back = tk.slice(i + 1);
+        const w = Math.max(...front.concat(back).map(t => t.length));
+        const line = arr => arr.map(t => t.padEnd(w)).join(' ').replace(/\s+$/, '');
+        return `${line(front)}   y2\n${line(back)}`;
+    }
+
+    // Square-1：抽出所有 (x,y) 組，每行 4 組、欄位對齊，維持 / 斷點語意
+    _formatSquare1(raw) {
+        const groups = raw.match(/\(\s*-?\d+\s*,\s*-?\d+\s*\)/g);
+        if (!groups) return raw.trim();
+        const w = Math.max(...groups.map(g => g.length));
+        const perLine = 4;
+        const lines = [];
+        for (let i = 0; i < groups.length; i += perLine) {
+            const cells = groups.slice(i, i + perLine).map((g, j) => {
+                const isLast = (i + j) === groups.length - 1;
+                return g.padEnd(w) + (isLast ? '' : ' /');
+            });
+            lines.push(cells.join(' ').replace(/\s+$/, ''));
+        }
+        return lines.join('\n');
     }
 
     // ------------------------------------------------------------------
