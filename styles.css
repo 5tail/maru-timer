@@ -147,8 +147,22 @@ body {
     font-weight: 600;
     color: #1e293b;
     line-height: 1.6;
-    white-space: pre;      /* 保留補齊空白，維持等寬欄位對齊 */
-    overflow-x: auto;      /* 窄螢幕水平捲動，不破壞欄位對齊 */
+    white-space: pre;      /* clock/sq1 文字排版保留補齊空白 */
+    overflow-x: auto;      /* 窄螢幕水平捲動，不破壞對齊 */
+}
+
+/* move 類項目：等寬儲存格網格，每個符號同寬置中，欄列都對齊 */
+.sc-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--sc-cols), var(--sc-cell));
+    column-gap: 1ch;
+    row-gap: 0.35em;
+    width: max-content;
+    margin: 0 auto;        /* 網格整體置中；超寬時由 .scramble-text 水平捲動 */
+}
+
+.sc-move {
+    text-align: center;    /* 每個 move 在固定寬儲存格內置中 */
 }
 
 .new-scramble-btn {

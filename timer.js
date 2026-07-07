@@ -251,13 +251,13 @@ class CubeTimer {
             const scramble = await window.ScrambleEngine.generate(this.selectedEvent);
             if (reqId !== this._scrambleReqId) return; // 舊請求，丟棄
             this.currentScramble = scramble; // 儲存用原始字串(單行)
-            this.elements.scrambleText.textContent = this.formatScramble(this.selectedEvent, scramble);
+            this.displayScramble(this.elements.scrambleText, this.selectedEvent, scramble);
             this.elements.scrambleText.setAttribute('data-source', window.ScrambleEngine.lastSource || 'local');
         } catch (error) {
             if (reqId !== this._scrambleReqId) return;
             console.error('打亂生成失敗，使用本地生成器', error);
             this.currentScramble = ScrambleGenerator.generate(this.selectedEvent);
-            this.elements.scrambleText.textContent = this.formatScramble(this.selectedEvent, this.currentScramble);
+            this.displayScramble(this.elements.scrambleText, this.selectedEvent, this.currentScramble);
             this.elements.scrambleText.setAttribute('data-source', 'local');
         } finally {
             if (reqId === this._scrambleReqId) this.elements.newScrambleBtn.disabled = false;
@@ -265,29 +265,34 @@ class CubeTimer {
     }
 
     // ------------------------------------------------------------------
-    // 顯示層排版：等寬欄位對齊 + 依項目換行（來源無關，cubing.js／本地皆套用）
-    // 不改動 currentScramble(儲存原始字串)，僅影響打亂區塊的顯示。
+    // 顯示層排版（來源無關，cubing.js／本地皆套用；不改動 currentScramble）
+    //   move 類項目：等寬儲存格網格，每個符號同寬置中(解決長短不一參差)
+    //   clock / sq1：專屬文字排版(padEnd 對齊)
     // ------------------------------------------------------------------
-    formatScramble(eventId, raw) {
-        if (!raw) return raw;
-        if (eventId === 'clock') return this._formatClock(raw);
-        if (eventId === 'sq1')   return this._formatSquare1(raw);
+    displayScramble(el, eventId, raw) {
+        el.textContent = '';
+        if (!raw) return;
+        if (eventId === 'clock') { el.textContent = this._formatClock(raw); return; }
+        if (eventId === 'sq1')   { el.textContent = this._formatSquare1(raw); return; }
         const tokens = raw.trim().split(/\s+/); // 攤平既有換行，統一重排
-        const perLine = SCRAMBLE_GRID[eventId];
-        if (perLine) return this._gridScramble(tokens, perLine);
-        return tokens.join('  '); // 短項目：單行、雙空格較好讀
+        const perLine = SCRAMBLE_GRID[eventId] || tokens.length; // 未列出者單行
+        this._renderMoveGrid(el, tokens, perLine);
     }
 
-    // 等寬對齊網格：每個 move 補到等寬，每行固定步數，上下成欄
-    _gridScramble(tokens, perLine) {
-        const w = Math.max(...tokens.map(t => t.length));
-        const lines = [];
-        for (let i = 0; i < tokens.length; i += perLine) {
-            lines.push(
-                tokens.slice(i, i + perLine).map(t => t.padEnd(w)).join(' ').replace(/\s+$/, '')
-            );
-        }
-        return lines.join('\n');
+    // 等寬儲存格網格：每格固定寬(以最長 move 為準)、符號置中，行數 = ceil(步數/perLine)
+    _renderMoveGrid(el, tokens, perLine) {
+        const maxLen = Math.max(...tokens.map(t => t.length));
+        const grid = document.createElement('div');
+        grid.className = 'sc-grid';
+        grid.style.setProperty('--sc-cols', perLine);
+        grid.style.setProperty('--sc-cell', maxLen + 'ch');
+        tokens.forEach(tk => {
+            const cell = document.createElement('span');
+            cell.className = 'sc-move';
+            cell.textContent = tk;
+            grid.appendChild(cell);
+        });
+        el.appendChild(grid);
     }
 
     // Clock：在 y2 斷成前後兩行（前 9 針／後 5 針），欄位對齊
