@@ -1,0 +1,15 @@
+# 相依套件（僅測試用，不進版控）
+node_modules/
+package.json
+package-lock.json
+
+# 測試檔（本機開發用，非部署產物）
+test-scrambles.js
+test-dom.js
+
+# 作業系統／編輯器雜項
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
