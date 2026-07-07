@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小丸號魔術方塊計時器 - MaruCube Timer</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- 打亂引擎：優先載入 cubing.js(random-state)，失敗/離線則由 scramble-engine.js 自動降級本地生成器 -->
+    <script type="module">
+        try {
+            const { randomScrambleForEvent } =
+                await import("https://cdn.cubing.net/v0/js/cubing/scramble");
+            window.cubingScramble = randomScrambleForEvent;
+            window.dispatchEvent(new Event('cubing-ready'));
+        } catch (e) {
+            console.warn('cubing.js 載入失敗，使用本地打亂生成器', e);
+            window.cubingScramble = null;
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>小丸號魔術方塊計時器</h1>
+                    <p class="subtitle">MaruCube Timer Practice</p>
+                </div>
+                <div class="language-selector">
+                    <select id="languageSelect">
+                        <option value="zh-TW">繁體中文</option>
+                        <option value="zh-CN">简体中文</option>
+                        <option value="en">English</option>
+                        <option value="ja">日本語</option>
+                        <option value="ko">한국어</option>
+                        <option value="es">Español</option>
+                        <option value="vi">Tiếng Việt</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Timer Section -->
+            <div class="timer-section">
+                <div class="event-selector">
+                    <label for="eventSelect" data-i18n="event">項目：</label>
+                    <select id="eventSelect">
+                        <!-- 選項由 translations.js 依語言動態生成，此為 pre-JS 預設 -->
+                        <option value="333">3x3x3 魔術方塊</option>
+                        <option value="222">2x2x2 魔術方塊</option>
+                        <option value="444">4x4x4 魔術方塊</option>
+                        <option value="555">5x5x5 魔術方塊</option>
+                        <option value="666">6x6x6 魔術方塊</option>
+                        <option value="777">7x7x7 魔術方塊</option>
+                        <option value="pyram">金字塔方塊</option>
+                        <option value="skewb">斜轉方塊</option>
+                        <option value="mega">十二面體方塊</option>
+                        <option value="sq1">SQ1扇形方塊</option>
+                        <option value="clock">魔錶</option>
+                        <option value="fto">轉面八面體 (FTO)</option>
+                        <option value="ivy">楓葉方塊</option>
+                    </select>
+                </div>
+
+                <!-- Scramble Display -->
+                <div class="scramble-section">
+                    <div class="scramble-display">
+                        <div class="scramble-label" data-i18n="currentScramble">目前轉法：</div>
+                        <div id="scrambleText" class="scramble-text">按下「新SC」生成轉法</div>
+                    </div>
+                    <button id="newScrambleBtn" class="new-scramble-btn" data-i18n="newScramble">新SC</button>
+                </div>
+
+                <!-- Timer Display (電腦版) -->
+                <div class="timer-display">
+                    <div id="timerText" class="timer-text" data-i18n="pressSpace">按住空白鍵</div>
+                    <div id="instructionText" class="instruction-text" data-i18n="holdSpaceToStart">按住空白鍵0.5秒開始計時</div>
+                </div>
+
+                <!-- Mobile Timer Display (手機/平板) -->
+                <div class="mobile-timer-display">
+                    <div id="mobileTimerText" class="mobile-timer-time">00.00</div>
+                    <div id="mobileInstructionText" class="mobile-instruction" data-i18n="holdSpaceToStart">按住空白鍵0.5秒開始計時</div>
+                </div>
+
+                <!-- Mobile Timer Button -->
+                <div class="mobile-timer-container">
+                    <button id="mobileTimerBtn" class="mobile-timer-btn">
+                        <div class="mobile-timer-text" data-i18n="mobileStart">按住開始</div>
+                        <div class="mobile-timer-instruction" data-i18n="mobileHoldInstruction">觸摸並按住 0.5 秒</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistics and History -->
+            <div class="stats-section">
+                <!-- Statistics -->
+                <div class="stats-card">
+                    <h3 data-i18n="statistics">統計</h3>
+                    <div class="stats-content">
+                        <div id="ao5Display" class="stat-item" style="display: none;">
+                            <span class="stat-label" data-i18n="ao5">五次平均 (AO5)</span>
+                            <span id="ao5Value" class="stat-value">--</span>
+                        </div>
+                        <div id="mo5Display" class="stat-item" style="display: none;">
+                            <span class="stat-label" data-i18n="mo5">五次均值 (MO5)</span>
+                            <span id="mo5Value" class="stat-value">--</span>
+                        </div>
+                        <div id="noStatsMessage" class="no-stats" data-i18n="noStatistics">完成 5 次解題來查看統計</div>
+                    </div>
+                </div>
+
+                <!-- Solve History -->
+                <div class="history-card">
+                    <div class="history-header">
+                        <h3 data-i18n="recentSolves">最近解題</h3>
+                        <button id="clearRecordsBtn" class="clear-records-btn" data-i18n="clearRecords" style="display: none;">清除本項目記錄</button>
+                    </div>
+                    <div id="solveHistoryList" class="solve-history">
+                        <div class="no-records" data-i18n="noRecords">尚無解題記錄</div>
+                    </div>
+                    <div id="lastScrambleSection" class="last-scramble" style="display: none;">
+                        <span class="last-scramble-label" data-i18n="lastScramble">上一轉SC (Last SC)</span>
+                        <span id="lastScrambleText" class="last-scramble-text">--</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-text">
+                    <p data-i18n="footerLine1">小丸號 獨立計時器</p>
+                    <p data-i18n="footerLine2">支援 WCA 官方項目及 FTO、楓葉方塊</p>
+                    <p class="footer-copyright">© 2026 小丸號 MaruCube</p>
+                </div>
+                <div class="footer-links" id="footerLinks">
+                    <a href="https://maru.tw" target="_blank" rel="noopener" title="maru.tw">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="scrambles.js"></script>
+    <script src="scramble-engine.js"></script>
+    <script src="translations.js"></script>
+    <script src="timer.js"></script>
+</body>
+</html>
